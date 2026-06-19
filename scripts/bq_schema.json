@@ -1,0 +1,38 @@
+[
+  {
+    "name": "filename",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "The name of the processed file"
+  },
+  {
+    "name": "bucket_name",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "The GCS bucket where the file was uploaded"
+  },
+  {
+    "name": "word_count",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Total word count extracted from the document"
+  },
+  {
+    "name": "tags",
+    "type": "STRING",
+    "mode": "REPEATED",
+    "description": "List of tags matching content keywords"
+  },
+  {
+    "name": "created_time",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when the file was created in GCS"
+  },
+  {
+    "name": "processed_time",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when the document was processed by Cloud Run"
+  }
+]
