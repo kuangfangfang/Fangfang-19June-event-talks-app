@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from google.cloud import bigquery
 import google.auth
+import uuid
 
 # Set page configuration for wide layout and custom title
 st.set_page_config(
@@ -12,82 +13,170 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Premium dark theme custom CSS injections
-st.markdown("""
-<style>
-    /* Main Background and Text Colors */
-    .stApp {
-        background-color: #0F172A;
-        color: #F8FAFC;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+# Initialize session state for theme selection
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+
+# Define dynamic CSS variables based on selected theme
+if st.session_state.theme == "light":
+    css_variables = """
+    :root {
+        --bg-color: #F8FAFC;
+        --text-color: #0F172A;
+        --sidebar-bg: #F1F5F9;
+        --sidebar-border: #CBD5E1;
+        --header-text: #1E293B;
+        --subtitle-text: #475569;
+        --card-bg: rgba(255, 255, 255, 0.9);
+        --card-border: #CBD5E1;
+        --card-hover-border: #4F46E5;
+        --btn-bg-start: #0284C7;
+        --btn-bg-end: #4F46E5;
+        --btn-hover-start: #38BDF8;
+        --btn-hover-end: #6366F1;
+        --tag-bg: rgba(79, 70, 229, 0.1);
+        --tag-color: #4F46E5;
+        --tag-border: rgba(79, 70, 229, 0.3);
     }
+    """
+else:
+    css_variables = """
+    :root {
+        --bg-color: #0F172A;
+        --text-color: #F8FAFC;
+        --sidebar-bg: #1E293B;
+        --sidebar-border: #334155;
+        --header-text: #F1F5F9;
+        --subtitle-text: #94A3B8;
+        --card-bg: rgba(30, 41, 59, 0.7);
+        --card-border: #334155;
+        --card-hover-border: #38BDF8;
+        --btn-bg-start: #0284C7;
+        --btn-bg-end: #4F46E5;
+        --btn-hover-start: #38BDF8;
+        --btn-hover-end: #6366F1;
+        --tag-bg: rgba(56, 189, 248, 0.15);
+        --tag-color: #38BDF8;
+        --tag-border: rgba(56, 189, 248, 0.3);
+    }
+    """
+
+# Inject custom dynamic CSS
+st.markdown(f"""
+<style>
+    {css_variables}
+
+    /* Main Background and Text Colors */
+    .stApp {{
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }}
     
     /* Sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #1E293B !important;
-        border-right: 1px solid #334155;
-    }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] label {
-        color: #E2E8F0 !important;
-    }
+    section[data-testid="stSidebar"] {{
+        background-color: var(--sidebar-bg) !important;
+        border-right: 1px solid var(--sidebar-border);
+    }}
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] p {{
+        color: var(--text-color) !important;
+    }}
     
     /* Headings and Titles */
-    h1, h2, h3 {
+    h1, h2, h3, h4, h5, h6 {{
         font-weight: 700 !important;
-        color: #F1F5F9 !important;
+        color: var(--header-text) !important;
         letter-spacing: -0.025em;
-    }
-    .main-title {
+    }}
+    .main-title {{
         background: linear-gradient(90deg, #38BDF8, #818CF8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-size: 2.8rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
-    }
-    .subtitle {
-        color: #94A3B8;
+    }}
+    .subtitle {{
+        color: var(--subtitle-text);
         font-size: 1.1rem;
         margin-bottom: 2rem;
-    }
+    }}
     
     /* Styled Metric Cards */
-    .metric-card {
-        background: rgba(30, 41, 59, 0.7);
-        border: 1px solid #334155;
+    .metric-card {{
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         transition: transform 0.2s, border-color 0.2s;
-    }
-    .metric-card:hover {
+    }}
+    .metric-card:hover {{
         transform: translateY(-2px);
-        border-color: #38BDF8;
-    }
-    .metric-label {
+        border-color: var(--card-hover-border);
+    }}
+    .metric-label {{
         font-size: 0.875rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #94A3B8;
+        color: var(--subtitle-text);
         font-weight: 600;
-    }
-    .metric-value {
+    }}
+    .metric-value {{
         font-size: 2rem;
         font-weight: 700;
-        color: #F8FAFC;
+        color: var(--text-color);
         margin-top: 0.5rem;
-    }
+    }}
+    
+    /* Document Card Styling */
+    .doc-card {{
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        transition: transform 0.2s, border-color 0.2s;
+    }}
+    .doc-card:hover {{
+        transform: translateY(-2px);
+        border-color: var(--card-hover-border);
+    }}
+    .doc-title {{
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--header-text);
+        margin-bottom: 0.5rem;
+    }}
+    .doc-meta {{
+        font-size: 0.9rem;
+        color: var(--subtitle-text);
+        margin-bottom: 0.8rem;
+    }}
+    .doc-tag {{
+        display: inline-block;
+        background-color: var(--tag-bg);
+        color: var(--tag-color);
+        border: 1px solid var(--tag-border);
+        border-radius: 6px;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.75rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }}
     
     /* Styled Dataframe/Table overrides */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid #334155;
+    div[data-testid="stDataFrame"] {{
+        border: 1px solid var(--card-border);
         border-radius: 8px;
         overflow: hidden;
-    }
+    }}
     
-    /* Refresh Button Styling */
-    .stButton>button {
-        background: linear-gradient(135deg, #0284C7, #4F46E5) !important;
+    /* Refresh & General Button Styling */
+    .stButton>button {{
+        background: linear-gradient(135deg, var(--btn-bg-start), var(--btn-bg-end)) !important;
         color: white !important;
         font-weight: 600 !important;
         border: none !important;
@@ -95,19 +184,31 @@ st.markdown("""
         padding: 0.5rem 1.5rem !important;
         box-shadow: 0 4px 6px -1px rgba(56, 189, 248, 0.2) !important;
         transition: all 0.2s !important;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #38BDF8, #6366F1) !important;
+    }}
+    .stButton>button:hover {{
+        background: linear-gradient(135deg, var(--btn-hover-start), var(--btn-hover-end)) !important;
         transform: scale(1.02) !important;
         box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.3) !important;
-    }
+    }}
     
     /* Info/Warning banners */
-    .stAlert {
-        background-color: #1E293B !important;
-        border: 1px solid #475569 !important;
-        color: #F8FAFC !important;
-    }
+    .stAlert {{
+        background-color: var(--sidebar-bg) !important;
+        border: 1px solid var(--card-border) !important;
+        color: var(--text-color) !important;
+    }}
+    
+    /* Inputs theme support */
+    .stTextInput>div>div>input {{
+        background-color: var(--sidebar-bg) !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--card-border) !important;
+    }}
+    .stMultiSelect div[data-baseweb="select"] {{
+        background-color: var(--sidebar-bg) !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--card-border) !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -175,8 +276,21 @@ def fetch_data(project, dataset, table):
         return None, f"Failed to retrieve data from BigQuery:\n\n{str(e)}"
 
 # --- MAIN CONTENT AREA ---
-st.markdown('<div class="main-title">📄 Document Ingestion Pipeline</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Monitor metadata and process files serverless on Google Cloud</div>', unsafe_allow_html=True)
+col_title, col_toggle = st.columns([5, 1])
+with col_title:
+    st.markdown('<div class="main-title">📄 Document Ingestion Pipeline</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Monitor metadata and process files serverless on Google Cloud</div>', unsafe_allow_html=True)
+with col_toggle:
+    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+    is_light = st.toggle(
+        "🌞 Light Mode", 
+        value=(st.session_state.theme == "light"),
+        key="theme_toggle"
+    )
+    new_theme = "light" if is_light else "dark"
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
 
 if not project_id:
     st.info("👈 Please enter your Google Cloud Project ID in the sidebar to load the document table.")
@@ -273,18 +387,154 @@ else:
         display_df['GCS Upload Date'] = pd.to_datetime(display_df['GCS Upload Date']).dt.strftime('%Y-%m-%d %H:%M:%S')
         display_df['Processing Date'] = pd.to_datetime(display_df['Processing Date']).dt.strftime('%Y-%m-%d %H:%M:%S')
 
-        # Display Dataframe
-        st.dataframe(
-            display_df[["Filename", "Word Count", "Extracted Tags", "GCS Upload Date", "Processing Date", "GCS Bucket"]],
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # Download CSV option
+        # Export overall CSV option
         csv = display_df.to_csv(index=False).encode('utf-8')
+        
+        # Render View Tabs (Card View vs Table View)
+        tab_cards, tab_table = st.tabs(["📂 Card View", "📊 Table View"])
+        
+        with tab_table:
+            st.dataframe(
+                display_df[["Filename", "Word Count", "Extracted Tags", "GCS Upload Date", "Processing Date", "GCS Bucket"]],
+                use_container_width=True,
+                hide_index=True
+            )
+            
+        with tab_cards:
+            if len(filtered_df) == 0:
+                st.info("No documents found matching the criteria.")
+            else:
+                for idx, row in filtered_df.iterrows():
+                    # Form the metadata text representation to copy
+                    metadata_text = (
+                        f"Filename: {row['filename']}\n"
+                        f"GCS Bucket: gs://{row['bucket_name']}\n"
+                        f"Word Count: {row['word_count']:,}\n"
+                        f"Tags: {', '.join(row['tags']) if row['tags'] else 'None'}\n"
+                        f"Uploaded: {row['created_time']}\n"
+                        f"Processed: {row['processed_time']}"
+                    )
+                    
+                    # HTML template for tags
+                    tags_html = "".join([f'<span class="doc-tag">{tag}</span>' for tag in row['tags']])
+                    if not tags_html:
+                        tags_html = '<span class="doc-tag" style="background-color: var(--sidebar-border); color: var(--subtitle-text); border-color: transparent;">No tags</span>'
+                    
+                    # Card Container styled with doc-card CSS
+                    st.markdown(f"""
+                    <div class="doc-card">
+                        <div class="doc-title">📄 {row['filename']}</div>
+                        <div class="doc-meta">
+                            <strong>Bucket:</strong> gs://{row['bucket_name']} &nbsp;|&nbsp; 
+                            <strong>Word Count:</strong> {row['word_count']:,} words
+                        </div>
+                        <div class="doc-meta">
+                            <strong>Uploaded:</strong> {row['created_time']} &nbsp;|&nbsp; 
+                            <strong>Processed:</strong> {row['processed_time']}
+                        </div>
+                        <div style="margin-top: 0.5rem; margin-bottom: 0.2rem;">
+                            {tags_html}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Columns for buttons under the container
+                    btn_col1, btn_col2, _ = st.columns([1.5, 1.2, 4])
+                    
+                    with btn_col1:
+                        unique_id = f"{idx}_{uuid.uuid4().hex[:6]}"
+                        escaped_metadata = metadata_text.replace("`", "\\`").replace("'", "\\'").replace('"', '\\"')
+                        
+                        copy_btn_html = f"""
+                        <textarea id="copy-src-{unique_id}" style="position: absolute; left: -9999px; height: 1px; width: 1px;">{escaped_metadata}</textarea>
+                        <button id="copy-btn-{unique_id}" style="
+                            background: linear-gradient(135deg, #0284C7, #4F46E5);
+                            color: white;
+                            border: none;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                            width: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 4px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        ">
+                            📋 Copy Info
+                        </button>
+                        <script>
+                            document.getElementById('copy-btn-{unique_id}').addEventListener('click', function() {{
+                                var text = `{escaped_metadata}`;
+                                var btn = this;
+                                
+                                if (navigator.clipboard && window.isSecureContext) {{
+                                    navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+                                }} else {{
+                                    fallbackCopy();
+                                }}
+                                
+                                function fallbackCopy() {{
+                                    var textArea = document.getElementById('copy-src-{unique_id}');
+                                    textArea.select();
+                                    textArea.setSelectionRange(0, 99999);
+                                    try {{
+                                        var success = document.execCommand('copy');
+                                        if (success) {{
+                                            showSuccess();
+                                        }} else {{
+                                            btn.innerText = '❌ Failed';
+                                            setTimeout(resetBtn, 2000);
+                                        }}
+                                    }} catch (err) {{
+                                        btn.innerText = '❌ Error';
+                                        setTimeout(resetBtn, 2000);
+                                    }}
+                                }}
+                                
+                                function showSuccess() {{
+                                    btn.innerHTML = '✓ Copied!';
+                                    btn.style.background = 'linear-gradient(135deg, #10B981, #059669)';
+                                    setTimeout(resetBtn, 2000);
+                                }}
+                                
+                                function resetBtn() {{
+                                    btn.innerHTML = '📋 Copy Info';
+                                    btn.style.background = 'linear-gradient(135deg, #0284C7, #4F46E5)';
+                                }}
+                            }});
+                        </script>
+                        """
+                        st.components.v1.html(copy_btn_html, height=35)
+                        
+                    with btn_col2:
+                        card_df = pd.DataFrame([{
+                            "filename": row['filename'],
+                            "bucket_name": row['bucket_name'],
+                            "word_count": row['word_count'],
+                            "tags": ", ".join(row['tags']),
+                            "created_time": row['created_time'],
+                            "processed_time": row['processed_time']
+                        }])
+                        card_csv = card_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Export CSV",
+                            data=card_csv,
+                            file_name=f"{row['filename']}_metadata.csv",
+                            mime='text/csv',
+                            key=f"dl_{idx}",
+                            use_container_width=True
+                        )
+                    
+                    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+                    
+        st.markdown("<br>", unsafe_allow_html=True)
         st.download_button(
-            label="📥 Export Metadata CSV",
+            label="📥 Export All Metadata to CSV",
             data=csv,
-            file_name='document_metadata.csv',
+            file_name='document_metadata_all.csv',
             mime='text/csv',
         )
